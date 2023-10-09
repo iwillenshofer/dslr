@@ -3,7 +3,7 @@
 	<h1 align="center">dslr</h1>
 </p>
 <p align="center">
-	<img src="https://img.shields.io/badge/Success-125/100_✓-gray.svg?colorA=61c265&colorB=4CAF50&style=for-the-badge">
+	<!--img src="https://img.shields.io/badge/Success-125/100_✓-gray.svg?colorA=61c265&colorB=4CAF50&style=for-the-badge"-->
 	<img src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black">
 	<img src="https://img.shields.io/badge/mac%20os-000000?style=for-the-badge&logo=apple&logoColor=white">
 </p>
@@ -44,5 +44,6 @@
 		</tr>
 	</table>
 </p>
+
 
 <br>
