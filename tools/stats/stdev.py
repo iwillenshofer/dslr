@@ -1,19 +1,21 @@
-def mean(data: list) -> float:
+def mean(d: list) -> float:
     """
     calculates the mean value
     """
+    data = [x for x in d if x == x]
     size = len(data)
     if not size:
         return float('nan')
     return (sum(data) / float(size))
 
 
-def stdev(data: list, ddof=1) -> float:
+def stdev(d: list, ddof=1) -> float:
     """
     calculates standard deviation
     ddof = 1 for sample
     set ddof = 0 for populaton
     """
+    data = [x for x in d if x == x]
     size = len(data)
     if size < 2:
         return (float('nan'))
