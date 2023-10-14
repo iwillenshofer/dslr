@@ -3,8 +3,11 @@
 # https://medium.com/analytics-vidhya/logistic-regression-from-scratch-multi-classification-with-onevsall-d5c2acf0c37c
 #
 
+import random
 import sys
 import math
+
+import numpy as np
 from tools import stats
 from pandas import read_csv, DataFrame
 from matplotlib import pyplot as plt
@@ -77,7 +80,6 @@ class LogisticRegression:
         a = sum([y[i] * math.log(self.sigmoid( X[i] * y[i] )) + (1 - y[i]) * math.log(1 - self.sigmoid(X[i] * y[i]))  for i, _ in enumerate(X)])
         return (-1/len(X) * a)
 
-
     def one_vs_all(self, feature: str, clas: str):
         """
         returns a dataframe containing only the feature and label cols,
@@ -91,7 +93,59 @@ class LogisticRegression:
         df.dropna(inplace=True)
         return (df)
 
-#    def gradient_descent(self, data, feature, clas):
+#   def gradient_descent(self, data, feature, clas):
+    def gradient_descent(self, data: DataFrame, feature: str, my_class: str):
+        X = list(data[feature])
+        y = list(data[my_class])
+
+        num_samples = len(X)
+        theta = np.zeros(2)  # Initialize parameters theta_0 and theta_1 to zero
+
+        for iteration in range(self.EPOCHS):
+            gradient_theta_0 = 0
+            gradient_theta_1 = 0
+
+            for i in range(num_samples):
+                # Calculate the prediction
+                prediction = self.sigmoid(theta[0] + theta[1] * X[i])
+
+                # Update the gradients
+                gradient_theta_0 += (prediction - y[i])
+                gradient_theta_1 += (prediction - y[i]) * X[i]
+
+            # Update the parameters using the gradients
+            theta[0] -= self.LEARNING_RATE * gradient_theta_0 / num_samples
+            theta[1] -= self.LEARNING_RATE * gradient_theta_1 / num_samples
+
+        return theta
+
+# bonus sohastic gradient...
+    def stochastic_gradient_descent(self, data: DataFrame, feature: str, my_class: str):
+        X = list(data[feature])
+        y = list(data[my_class])
+
+        num_samples = len(X)
+        theta = np.zeros(2)  # Initialize parameters theta_0 and theta_1 to zero
+
+        for iteration in range(self.EPOCHS):
+            # Randomly shuffle the data points at the beginning of each iteration
+            data_shuffled = list(zip(X, y))
+            random.shuffle(data_shuffled)
+
+            for i in range(num_samples):
+                xi, yi = data_shuffled[i]
+
+                # Calculate the prediction
+                prediction = self.sigmoid(theta[0] + theta[1] * xi)
+
+                # Update the gradients and parameters
+                gradient_theta_0 = prediction - yi
+                gradient_theta_1 = (prediction - yi) * xi
+
+                theta[0] -= self.LEARNING_RATE * gradient_theta_0
+                theta[1] -= self.LEARNING_RATE * gradient_theta_1
+
+        return theta
 
 
     def train(self):
