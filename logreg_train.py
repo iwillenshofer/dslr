@@ -5,6 +5,7 @@
 
 import sys
 import math
+import numpy as np
 from tools import stats
 from pandas import read_csv, DataFrame
 from matplotlib import pyplot as plt
@@ -32,8 +33,8 @@ FEATURES = [
 LABEL = 'Hogwarts House'
 
 class LogisticRegression:
-    EPOCHS=3000
-    LEARNING_RATE = 1
+    EPOCHS=30000
+    LEARNING_RATE = .15
 
     def __init__(self, df: DataFrame, features: [str], label: str, graph=False):
         self.e = self.calculate_euler()
@@ -77,7 +78,7 @@ class LogisticRegression:
 
     def cost_function(self, ys: [float], hs: [float]):
         """
-        Cost Function: 
+        Cost Function: Cross Entropy
         J(θ) = -1/m * sum(y * log(h) + (1 - y) * log(1 - h))
         J(θ) is the cost function that needs to be minimized during the training of logistic regression.
         m is the number of training examples.
@@ -106,7 +107,7 @@ class LogisticRegression:
         using a gradient descent
         """
         dic = {}
-        df = self.dataset[[LABEL] + FEATURES].copy()
+        self.dataset.drop([row for row in self.dataset if row not in [LABEL] + FEATURES], axis=1, inplace=True)
         for c in self.classes:
             dic[c] = {}
             self.one_vs_all(c)
@@ -117,24 +118,47 @@ class LogisticRegression:
         for key in dic:
             print(dic[key])
         return (dic)
-    
+
 
     def gradient_descent(self):
-        import numpy as np
-        m = len(self.dataset)
-        thetas = np.random.rand(m)
-        for i in range(self.epochs):
-            z = [sum([thetas[j] * self.dataset[feature][i] for j, feature in enumerate(self.features)]) for i in range(m)]
-            h = [self.sigmoid(zz) for zz in z]
-            gradients = [sum([(h[i] -  self.dataset['class'][i]) * self.dataset[feature][i] for i in range(m)]) / m for _, feature in enumerate(self.features)]
-            thetas = [thetas[j] - self.learning_rate * gradients[j] for j, _ in enumerate(self.features)]
-            cost = self.cost_function(self.dataset['class'], h)
-            print(cost, thetas[0])
-        return thetas
+        delta_threshold = 1e-7
+        prev_cost = 0
+        
+        X = self.dataset.drop(['class', LABEL], axis=1).values
+        y = self.dataset['class'].values
+        m = X.shape[0]
+        print("ROWS:", m)
+        thetas = np.zeros(X.shape[1])
+        for iteration in range(self.epochs):
+            # we will have a z value, which is the dot product of each row: (the sum of each feature times their thetas)
+            #z = [sum([self.dataset[feature][i] * thetas[j] for j, feature in enumerate(self.features)]) for i in range(m)]
+            z = np.dot(X, thetas)
+            # h value is the sigmoid function applied to each z value (which means, for each element)
+            # h = [self.sigmoid(zz) for zz in z]
+            h = self.sigmoid(z)
+            print(h)
+            cost = self.cost_function(y, h)
+            # gradient is applied to the sum of each h - their real values (in this case 0 or 1)
+            # its calculated separately for each feature
+            #gradients = [(1 / m) * sum([(h[i] - y[i]) * self.dataset[feature][i] for i in range(m)]) for feature in self.features]
+            gradients = (1 / m) * np.dot((h - y).T, X).T
+            thetas -= self.learning_rate * gradients
+            if iteration > 0 and abs(cost - prev_cost) < delta_threshold:
+                print(f"Breaking @ iteration {iteration}.")
+                break
+            prev_cost = cost
+        return(thetas)
 
 
 
-
+#            gradients_bias = (1 / m) * sum([h[i] - y[i] for i in range(m)])
+#            #now we update each thetas
+#            thetas = [thetas[j] - (self.learning_rate * gradients[j]) for j, _ in enumerate(thetas)]
+#            #it all makes more sense now.... Let's check the cost function to see if it converges.
+#            cost = self.cost_function(y, h)
+#            if not iteration % 50:
+#                print(iteration, "/", self.epochs)
+#        print(cost, thetas)
 
 def validate_args():
     """verifies if 1 argument is passed"""
@@ -178,7 +202,7 @@ if __name__ == "__main__":
     X = ds[FEATURES]
     y = ds[[LABEL]]
 
-    model = lm.LogisticRegression(multi_class='ovr', solver='lbfgs')
+    model = lm.LogisticRegression(multi_class='ovr', solver='liblinear', fit_intercept=False, verbose=1000)
     model.fit(X, y)
 
     # Make predictions on the test set
@@ -187,6 +211,7 @@ if __name__ == "__main__":
     # Display intercept and weights for each class
     print("Intercepts:", model.intercept_)
     print("Weights for each class:")
+    print("Iterations:", model.n_iter_)
     print(model.classes_)
     print(model.feature_names_in_)
     print(model.coef_)
