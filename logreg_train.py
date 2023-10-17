@@ -10,6 +10,152 @@ from tools import stats
 from pandas import read_csv, DataFrame, to_datetime
 from matplotlib import pyplot as plt
 
+class LogisticRegression:
+    DEFAULT_MAX_EPOCHS=70000
+    DEFAULT_LEARNING_RATE = .15
+    DEFAULT_DELTA_THRESHOLD = 1e-7
+
+    def __init__(self, verbose=False, fit_intercept=True):
+        self.y = None
+        self.X = None
+        self.weights = None
+        self.biases = None
+        self.classes = None
+        self.epochs = self.DEFAULT_MAX_EPOCHS
+        self.learning_rate = self.DEFAULT_LEARNING_RATE
+        self.min_values = None
+        self.max_values = None
+        self.fit_intercept = True
+        self.verbose = verbose
+        self.fit_intercept = fit_intercept
+        self.delta_threshold = self.DEFAULT_DELTA_THRESHOLD
+
+    def __log(self, *values: object):
+        if self.verbose:
+            print(*values)
+
+    def __sigmoid(self, z: float):
+        value = 1 / (1 + np.exp(-z))
+        return (value)
+
+    def __cost_function(self, ys: [float], hs: [float]):
+        """
+        Cost Function: Cross Entropy
+        J(θ) = -1/m * sum(y * log(h) + (1 - y) * log(1 - h))
+        J(θ) is the cost function that needs to be minimized during the training of logistic regression.
+        m is the number of training examples.
+        h is the predicted probability that example Xi belongs to the positive class (sigmod function) on x * class.
+        y is the actual label (0 or 1) for example Xi
+        """
+        y_costs = [ys[i] * math.log(hs[i]) + (1 - ys[i]) * math.log(1 - hs[i]) for i, _ in enumerate(hs)]
+        cost = (-1 / len(ys)) * sum(y_costs)
+        return cost
+
+
+    def __one_vs_all(self, y: [str], clas: str):
+        """
+        creates a numpy array based on y values
+        sets all its values to 0
+        sets its value to 1 if its label value == clas
+        """
+        y_class = np.copy(y)
+        y_class[y_class == clas] = 1
+        y_class[y_class != clas] = 0
+        y_class = y_class.astype(np.int64)
+        return (y_class)
+
+
+    def __normalize(self, X, min_values=None, max_values=None):
+        self.min_vals = np.min(X, axis=0) if not min_values else min_values
+        self.max_vals = np.max(X, axis=0) if not max_values else max_values
+        X_scaled = (X - self.min_vals) / (self.max_vals - self.min_vals)
+        return X_scaled
+
+
+    def __gradient_descent(self, X, y):
+        prev_cost = 0
+        m = X.shape[0]
+        thetas = np.random.rand(X.shape[1])
+        np.random.seed()
+        bias = np.random.rand(1) if self.fit_intercept else 0
+        for iteration in range(self.epochs):
+            z = np.dot(X, thetas) 
+            z = z + bias
+            h = self.__sigmoid(z)
+            gradients = (1 / m) * np.dot((h - y), X)
+            thetas -= self.learning_rate * gradients
+            if self.fit_intercept:
+                gradients_bias = (1 / m) * np.sum((h - y))
+                bias -= self.learning_rate * gradients_bias
+            cost = self.__cost_function(y, h)	
+            if iteration > 0 and abs(cost - prev_cost) < self.delta_threshold:
+                self.__log(f"Breaking @ iteration {iteration}.")
+                break
+            prev_cost = cost
+        return(thetas, bias)
+
+
+    def __train(self):
+        """
+        for each class, create a one_vs_all and get the weights of its features
+        using a gradient descent
+        """
+        self.weights = {}
+        self.biases = {}
+        for c in self.classes:
+            self.__log("Training for class:", c)
+            self.weights[c] = {}
+            y_c = self.__one_vs_all(self.y, c)
+            weights, bias = self.__gradient_descent(self.X, y_c) #* ratio
+            self.weights[c] = weights
+            self.biases[c] = bias
+        self.__log("Weights:", self.weights)
+        self.__log("Biases:", self.biases)
+
+
+    def fit(self, X, y, normalize=True, delta_threshold=DEFAULT_DELTA_THRESHOLD, max_iterations=DEFAULT_MAX_EPOCHS, learning_rate=DEFAULT_LEARNING_RATE):
+        self.epochs = max_iterations
+        self.learning_rate = learning_rate
+        self.delta_threshold = delta_threshold
+        self.X = X
+        self.y = y
+        self.classes = np.unique(self.y)
+        self.classes.sort()
+        if normalize:
+            self.X = self.__normalize(self.X)
+        self.__train()
+
+
+    def save_model(self):
+        pass
+    
+    def load_model(self):
+        pass
+
+
+    def accuracy(self):
+        pass
+    
+
+    def predict(self, X, normalize=True):
+        ds = DataFrame
+        if normalize == True:
+            X = self.__normalize(X, self.min_vals, self.max_vals)
+        for c in self.weights:
+            linear_pred = np.dot(X, self.weights[c])
+            ds[c] = self.__sigmoid(linear_pred + self.biases[c])
+        ds['prediction'] = ds[self.weights.keys()].idxmax(axis=1)
+        ds = ds[['prediction']]
+        self.__log(ds)
+        
+    
+    
+        #y = ds[LABEL].values
+        #times_right = (ds[LABEL] == ds['prediction']).sum()
+        #print(times_right / len(ds))
+
+
+
 # Defines the index column.
 # may be set as the column name, 0 for no index, or None, for auto number
 INDEX_COL = 'Index'
@@ -34,151 +180,10 @@ FEATURES = [
 
 LABEL = 'Hogwarts House'
 
-class LogisticRegression:
-    EPOCHS=70000
-    LEARNING_RATE = .15
-
-    def __init__(self, df: DataFrame, features: [str], label: str, graph=False):
-        self.e = self.calculate_euler()
-        self.graph = graph
-        self.dataset = df
-        self.features = features;
-        self.label = label
-        self.classes = df[label].unique()
-        self.classes.sort()
-        self.weight_matrix = [[0 for x in self.classes] for i in features]
-        self.learning_rate = self.LEARNING_RATE
-        self.epochs = self.EPOCHS
-        #if graph:
-        #    self.graph_sigmoid()
-        self.weights, self.biases = self.train()
-        #return(weights)
-        
-    def graph_sigmoid(self):
-        rng = [x / 10 for x in range(-50, 50)]
-        sigmod_values = [self.sigmoid(i) for i in rng]
-        derivative_values = [s * (1 - s) for s in sigmod_values]
-        plt.plot(sigmod_values)
-        plt.plot(derivative_values)
-        plt.plot([0.5 for i in sigmod_values])
-        plt.show()
-
-
-    def calculate_euler(self):
-        e = 1.0
-        factorial = 1
-        for i in range(1, 100):
-            factorial *= i
-            e += 1.0 / factorial
-        return e
-
-
-    def sigmoid(self, z: float):
-        value = 1 / (1 + self.e ** -z)
-        return (value)
-
-
-
-    def cost_function(self, ys: [float], hs: [float]):
-        """
-        Cost Function: Cross Entropy
-        J(θ) = -1/m * sum(y * log(h) + (1 - y) * log(1 - h))
-        J(θ) is the cost function that needs to be minimized during the training of logistic regression.
-        m is the number of training examples.
-        h is the predicted probability that example Xi belongs to the positive class (sigmod function) on x * class.
-        y is the actual label (0 or 1) for example Xi
-        """
-        y_costs = [ys[i] * math.log(hs[i]) + (1 - ys[i]) * math.log(1 - hs[i]) for i, _ in enumerate(hs)]
-        cost = (-1 / len(ys)) * sum(y_costs)
-        return cost
-
-
-
-    def one_vs_all(self, clas: str):
-        """
-        creates a new column called 'class' (if it does not exist)
-        sets all its values to 0
-        sets its value to 1 if its label row value == class
-        """
-        self.dataset['class'] = 0
-        self.dataset.loc[self.dataset[self.label] == clas, 'class'] = 1
-
-
-    def train(self):
-        """
-        for each class, create a one_vs_all and get the weights of its features
-        using a gradient descent
-        """
-        w = {}
-        b = {}
-        self.dataset.drop([row for row in self.dataset if row not in [LABEL] + FEATURES], axis=1, inplace=True)
-        for c in self.classes:
-            w[c] = {}
-            self.one_vs_all(c)
-            #ratio = 1 / (stats.max(data[feature]) - stats.min(data[feature]))
-            #stats.normalize_dataframe(data)
-            weights, bias = self.gradient_descent() #* ratio
-            w[c] = weights
-            b[c] = bias
-        return w, b
-
-
-    def gradient_descent(self):
-        delta_threshold = 1e-5
-        prev_cost = 0
-       # print(self.dataset)
-        X = self.dataset.drop(['class', LABEL], axis=1).values
-        y = self.dataset['class'].values
-        m = X.shape[0]
-        #print("ROWS:", m)
-        #X = np.c_[np.ones((m, 1)), X]
-        print(X)
-        thetas = np.random.rand(X.shape[1])
-        np.random.seed()
-        bias = np.random.rand(1)
-        for iteration in range(self.epochs):
-            # we will have a z value, which is the dot product of each row: (the sum of each feature times their thetas)
-            # z = np.array([sum([self.dataset[feature][i] * thetas[j] for j, feature in enumerate(self.features)]) for i in range(m)])
-            z = np.dot(X, thetas) 
-            z = z + bias
-            # h value is the sigmoid function applied to each z value (which means, for each element)
-            # h = [self.sigmoid(zz) for zz in z]
-            h = self.sigmoid(z)
-            # gradient is applied to the sum of each h - their real values (in this case 0 or 1)
-            # its calculated separately for each feature
-            
-            #gradients = [(1 / m) * sum([(h[i] - y[i]) * self.dataset[feature][i] for i in range(m)]) for feature in self.features]
-            
-            gradients = (1 / m) * np.dot((h - y), X)
-            gradients_bias = (1 / m) * np.sum((h - y))
-            thetas -= self.learning_rate * gradients
-            bias -= self.learning_rate * gradients_bias
-            cost = self.cost_function(y, h)	
-            if iteration > 0 and abs(cost - prev_cost) < delta_threshold:
-                print(f"Breaking @ iteration {iteration}.")
-                break
-            prev_cost = cost
-        print(thetas)
-        # returns weights and bias.
-        return(thetas, bias)
 
 
 
 
-    def predict(self, ds):
-
-        X = ds[FEATURES].values
-        y = ds[LABEL].values
-        
-        for c in self.weights:
-            linear_pred = np.dot(X, self.weights[c])
-            ds[c] = self.sigmoid(linear_pred + self.biases[c])
-
-        ds['prediction'] = ds[self.weights.keys()].idxmax(axis=1)
-        print(ds)
-        
-        times_right = (ds[LABEL] == ds['prediction']).sum()
-        print(times_right / len(ds))
 
 
 
@@ -202,8 +207,14 @@ def main():
         ds["Birthday"] = to_datetime(ds["Birthday"]).dt.strftime("%Y%m%d").astype(int)
         for feature in FEATURES:
             ds[feature].fillna(stats.mean(ds[feature]), inplace=True)
+        logreg = LogisticRegression(verbose=True, fit_intercept=True)
+        logreg.fit(ds[FEATURES], ds[LABEL])
         
         
+        
+        
+        
+        return
         stats.normalize_dataframe(ds)
         
         
