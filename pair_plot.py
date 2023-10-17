@@ -1,5 +1,5 @@
 from tools import stats
-from pandas import read_csv, DataFrame
+from pandas import read_csv, DataFrame, to_datetime
 from matplotlib import pyplot as plt
 
 DATASET = "datasets/dataset_train.csv"
@@ -11,6 +11,8 @@ INDEX_COL = 'Index'
 LABEL = 'Hogwarts House'
 
 FEATURES = [
+    'Best Hand',
+    'Birthday',
     'Arithmancy',
     'Astronomy',
     'Herbology',
@@ -62,7 +64,13 @@ def pairplot(ds: DataFrame):
 
 try:
     ds = read_csv(DATASET, index_col=INDEX_COL)
+    ds.replace('Right', 0, inplace=True)
+    ds.replace('Left', 1, inplace=True)
+    ds["Birthday"] = to_datetime(ds["Birthday"]).dt.strftime("%Y%m%d").astype(int)
+    print(ds)
+
     stats.normalize_dataframe(ds)
+    print(ds)
     pairplot(ds)
     plt.show()
 except Exception as error:

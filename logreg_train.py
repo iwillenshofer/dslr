@@ -7,7 +7,7 @@ import sys
 import math
 import numpy as np
 from tools import stats
-from pandas import read_csv, DataFrame
+from pandas import read_csv, DataFrame, to_datetime
 from matplotlib import pyplot as plt
 
 # Defines the index column.
@@ -15,7 +15,9 @@ from matplotlib import pyplot as plt
 INDEX_COL = 'Index'
 
 FEATURES = [
-    'Arithmancy',
+    'Best Hand',
+    'Birthday',
+#    'Arithmancy',
     'Astronomy',
     'Herbology',
     'Defense Against the Dark Arts',
@@ -25,7 +27,7 @@ FEATURES = [
     'History of Magic',
     'Transfiguration',
     'Potions',
-    'Care of Magical Creatures',
+#    'Care of Magical Creatures',
     'Charms',
     'Flying'
 ]
@@ -33,7 +35,7 @@ FEATURES = [
 LABEL = 'Hogwarts House'
 
 class LogisticRegression:
-    EPOCHS=30000
+    EPOCHS=70000
     LEARNING_RATE = .15
 
     def __init__(self, df: DataFrame, features: [str], label: str, graph=False):
@@ -49,7 +51,8 @@ class LogisticRegression:
         self.epochs = self.EPOCHS
         #if graph:
         #    self.graph_sigmoid()
-        weights = self.train()
+        self.weights, self.biases = self.train()
+        #return(weights)
         
     def graph_sigmoid(self):
         rng = [x / 10 for x in range(-50, 50)]
@@ -67,7 +70,7 @@ class LogisticRegression:
         for i in range(1, 100):
             factorial *= i
             e += 1.0 / factorial
-        return e            
+        return e
 
 
     def sigmoid(self, z: float):
@@ -106,59 +109,79 @@ class LogisticRegression:
         for each class, create a one_vs_all and get the weights of its features
         using a gradient descent
         """
-        dic = {}
+        w = {}
+        b = {}
         self.dataset.drop([row for row in self.dataset if row not in [LABEL] + FEATURES], axis=1, inplace=True)
         for c in self.classes:
-            dic[c] = {}
+            w[c] = {}
             self.one_vs_all(c)
             #ratio = 1 / (stats.max(data[feature]) - stats.min(data[feature]))
             #stats.normalize_dataframe(data)
-            weights = self.gradient_descent() #* ratio
-            dic[c] = weights
-        for key in dic:
-            print(dic[key])
-        return (dic)
+            weights, bias = self.gradient_descent() #* ratio
+            w[c] = weights
+            b[c] = bias
+        return w, b
 
 
     def gradient_descent(self):
-        delta_threshold = 1e-7
+        delta_threshold = 1e-5
         prev_cost = 0
-        
+       # print(self.dataset)
         X = self.dataset.drop(['class', LABEL], axis=1).values
         y = self.dataset['class'].values
         m = X.shape[0]
-        print("ROWS:", m)
-        thetas = np.zeros(X.shape[1])
+        #print("ROWS:", m)
+        #X = np.c_[np.ones((m, 1)), X]
+        print(X)
+        thetas = np.random.rand(X.shape[1])
+        np.random.seed()
+        bias = np.random.rand(1)
         for iteration in range(self.epochs):
             # we will have a z value, which is the dot product of each row: (the sum of each feature times their thetas)
-            #z = [sum([self.dataset[feature][i] * thetas[j] for j, feature in enumerate(self.features)]) for i in range(m)]
-            z = np.dot(X, thetas)
+            # z = np.array([sum([self.dataset[feature][i] * thetas[j] for j, feature in enumerate(self.features)]) for i in range(m)])
+            z = np.dot(X, thetas) 
+            z = z + bias
             # h value is the sigmoid function applied to each z value (which means, for each element)
             # h = [self.sigmoid(zz) for zz in z]
             h = self.sigmoid(z)
-            print(h)
-            cost = self.cost_function(y, h)
             # gradient is applied to the sum of each h - their real values (in this case 0 or 1)
             # its calculated separately for each feature
+            
             #gradients = [(1 / m) * sum([(h[i] - y[i]) * self.dataset[feature][i] for i in range(m)]) for feature in self.features]
-            gradients = (1 / m) * np.dot((h - y).T, X).T
+            
+            gradients = (1 / m) * np.dot((h - y), X)
+            gradients_bias = (1 / m) * np.sum((h - y))
             thetas -= self.learning_rate * gradients
+            bias -= self.learning_rate * gradients_bias
+            cost = self.cost_function(y, h)	
             if iteration > 0 and abs(cost - prev_cost) < delta_threshold:
                 print(f"Breaking @ iteration {iteration}.")
                 break
             prev_cost = cost
-        return(thetas)
+        print(thetas)
+        # returns weights and bias.
+        return(thetas, bias)
 
 
 
-#            gradients_bias = (1 / m) * sum([h[i] - y[i] for i in range(m)])
-#            #now we update each thetas
-#            thetas = [thetas[j] - (self.learning_rate * gradients[j]) for j, _ in enumerate(thetas)]
-#            #it all makes more sense now.... Let's check the cost function to see if it converges.
-#            cost = self.cost_function(y, h)
-#            if not iteration % 50:
-#                print(iteration, "/", self.epochs)
-#        print(cost, thetas)
+
+    def predict(self, ds):
+
+        X = ds[FEATURES].values
+        y = ds[LABEL].values
+        
+        for c in self.weights:
+            linear_pred = np.dot(X, self.weights[c])
+            ds[c] = self.sigmoid(linear_pred + self.biases[c])
+
+        ds['prediction'] = ds[self.weights.keys()].idxmax(axis=1)
+        print(ds)
+        
+        times_right = (ds[LABEL] == ds['prediction']).sum()
+        print(times_right / len(ds))
+
+
+
 
 def validate_args():
     """verifies if 1 argument is passed"""
@@ -174,11 +197,33 @@ def main():
     #try:
         validate_args()
         ds = read_csv(sys.argv[1], index_col=INDEX_COL)
+        ds.replace('Right', 0, inplace=True)
+        ds.replace('Left', 1, inplace=True)
+        ds["Birthday"] = to_datetime(ds["Birthday"]).dt.strftime("%Y%m%d").astype(int)
         for feature in FEATURES:
             ds[feature].fillna(stats.mean(ds[feature]), inplace=True)
+        
+        
         stats.normalize_dataframe(ds)
+        
+        
+        logreg = LogisticRegression(ds, FEATURES, LABEL, graph=False)
+        
+        
+        
+        
+        
+        dp = read_csv("datasets/dataset_predict.csv", index_col=INDEX_COL)
+        dp.replace('Right', 0, inplace=True)
+        dp.replace('Left', 1, inplace=True)
+        dp["Birthday"] = to_datetime(dp["Birthday"]).dt.strftime("%Y%m%d").astype(int)
+        for feature in FEATURES:
+            dp[feature].fillna(stats.mean(dp[feature]), inplace=True)
+        stats.normalize_dataframe(dp)   
+        logreg.predict(dp)
+        
+        
 #        print(stats.Describe(ds))
-        LogisticRegression(ds, FEATURES, LABEL, graph=True)
     #except Exception as error:
     #    print(f"{type(error).__name__}: {error}")
 
