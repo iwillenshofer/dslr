@@ -47,3 +47,10 @@
 
 
 <br>
+
+
+
+#
+# Awesome source of information
+# https://medium.com/analytics-vidhya/logistic-regression-from-scratch-multi-classification-with-onevsall-d5c2acf0c37c
+#
