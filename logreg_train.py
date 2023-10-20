@@ -28,7 +28,9 @@ FEATURES = [
 LABEL = 'Hogwarts House'
 
 def validate_args():
-    """verifies if 1 argument is passed"""
+    """
+    verifies if 1 argument is passed
+    """
     argc = len(sys.argv)
     if argc < 2:
         raise AssertionError("File name is expected as first argument")
