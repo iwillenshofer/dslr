@@ -118,7 +118,97 @@ class LogisticRegression:
                                 'gradients': gradients.tolist()})
         return thetas, bias, history
 
-    def __train(self):
+    def __stochastic_gradient_descent(self, X, y):
+        """
+        Performs a stochaist gradient descent
+        to train the model for a specific class.
+        Instead of usign a predefined times to update the gradient and
+        calculating them using all the datapoint for each epoch,
+        stochaistic gradient calculates the weight for each datapoint,
+        randomly, m (datalen) number of times
+        """
+        history = []
+        m = X.shape[0]
+        thetas = np.zeros(X.shape[1])
+        np.random.seed()
+        bias = np.random.rand(1) if self.fit_intercept else 0
+        for _ in range(self.epochs):
+            zs = []
+            hs = []
+            costs = []
+            for _ in range(m):
+                idx = np.random.randint(0, m)
+                mx = X[idx]
+                my = y[idx]
+                z = np.dot(mx, thetas)
+                z = z + bias
+                h = self.__sigmoid(z)
+                zs.append(z[0])
+                hs.append(h[0])
+                gradients = mx * (h - my)
+                thetas -= self.learning_rate * gradients
+                if self.fit_intercept:
+                    gradients_bias = h - my
+                    bias -= self.learning_rate * gradients_bias
+                cost = self.__cost_function([my], h)
+                costs.append(cost)
+            if self.save_history:
+                history.append({'z': np.sort(zs).tolist(),
+                                'h': np.sort(hs).tolist(),
+                                'bias': bias.tolist(),
+                                'weights': thetas.tolist(),
+                                'cost': sum(costs) / m,
+                                'gradients': gradients.tolist()})
+        return thetas, bias, history
+
+    def __minibatch_gradient_descent(self, X, y, chunksize=16):
+        """
+        Performs a minibatch gradient descent
+        to train the model for a specific class.
+        Instead of usign a predefined times to update the gradient and
+        calculating them using all the datapoint for each epoch,
+        stochaistic gradient calculates the weight for each datapoint,
+        randomly, m (datalen) number of times
+        """
+        history = []
+        m = X.shape[0]
+        thetas = np.zeros(X.shape[1])
+        np.random.seed()
+        shuffled_indices = np.random.permutation(m)
+        X = X[shuffled_indices]
+        y = y[shuffled_indices]
+        Xs = np.array_split(X, X.shape[0] / chunksize)
+        ys = np.array_split(y, y.shape[0] / chunksize)
+        n_chunks = len(Xs)
+        bias = np.random.rand(1) if self.fit_intercept else 0
+        for _ in range(self.epochs):
+            zs = []
+            hs = []
+            costs = []
+            for i, _ in enumerate(Xs):
+                ms = len(Xs[i])
+                z = np.dot(Xs[i], thetas)
+                z = z + bias
+                h = self.__sigmoid(z)
+                zs += z.tolist()
+                hs += h.tolist()
+                gradients = (1 / ms) * np.dot((h - ys[i]), Xs[i])
+                thetas -= self.learning_rate * gradients
+                if self.fit_intercept:
+                    gradients_bias = (1 / ms) * np.sum((h - ys[i]))
+                    bias -= self.learning_rate * gradients_bias
+                cost = self.__cost_function(ys[i], h)
+                costs.append(cost)
+            if self.save_history:
+                history.append({'z': np.sort(zs).tolist(),
+                                'h': np.sort(hs).tolist(),
+                                'bias': bias.tolist(),
+                                'weights': thetas.tolist(),
+                                'cost': sum(costs) / n_chunks,
+                                'gradients': gradients.tolist()})
+        return thetas, bias, history
+
+    def __train(self, method='batch'):
         """
         for each class, create a one_vs_all and get the weights of its
         features using a gradient descent
@@ -130,17 +220,23 @@ class LogisticRegression:
             self.__log("Training for class:", c)
             self.weights[c] = {}
             y_c = self.__one_vs_all(self.y, c)
-            weights, bias, history = self.__gradient_descent(self.X, y_c)
-            self.weights[c] = weights
-            self.biases[c] = bias
-            self.history[c] = history
+            if method == 'stochastic':
+                w, b, h = self.__stochastic_gradient_descent(self.X, y_c)
+            if method == 'minibatch':
+                w, b, h = self.__minibatch_gradient_descent(self.X, y_c)
+            else:
+                w, b, h = self.__gradient_descent(self.X, y_c)
+            self.weights[c] = w
+            self.biases[c] = b
+            self.history[c] = h
         self.__log("Weights:", self.weights)
         self.__log("Biases:", self.biases)
 
     def fit(self, X, y, normalize=True,
             delta_threshold=DEFAULT_DELTA_THRESHOLD,
-            max_iterations=DEFAULT_MAX_EPOCHS,
-            learning_rate=DEFAULT_LEARNING_RATE, save_history=False):
+            epochs=DEFAULT_MAX_EPOCHS,
+            learning_rate=DEFAULT_LEARNING_RATE, save_history=False,
+            method='bash'):
         """_summary_
 
         Args:
@@ -148,16 +244,17 @@ class LogisticRegression:
             y (numpy.ndarray): True label values
             normalize (bool, optional): Defaults to True.
             delta_threshold (_type_, optional): Defaults to 1e-7.
-            max_iterations (_type_, optional): Defaults to 500.
+            epochs (_type_, optional): Defaults to 500.
             learning_rate (_type_, optional): Defaults to 0.15.
             save_history (bool, optional):
              wether to save the history along with the weights.
              Defaults to True.
+            method: bash, minibash or stochastic
         """
-        self.epochs = max_iterations
+        self.epochs = epochs
         self.learning_rate = learning_rate
         self.delta_threshold = delta_threshold
-        self.X = X
+        self.X = X.to_numpy() if isinstance(X, DataFrame) else X
         self.y = y
         self.classes = np.unique(self.y)
         self.classes.sort()
@@ -165,7 +262,7 @@ class LogisticRegression:
             self.X = self.__normalize(self.X)
         if save_history:
             self.save_history = True
-        self.__train()
+        self.__train(method=method)
 
     def save_model(self, filename='model.json'):
         """

@@ -1,6 +1,6 @@
 import sys
 from tools import stats
-from pandas import read_csv, to_datetime
+from pandas import read_csv
 from tools.LogisticRegression import LogisticRegression
 
 INDEX_COL = 'Index'
@@ -49,7 +49,8 @@ def main():
         for feature in FEATURES:
             ds[feature].fillna(stats.mean(ds[feature]), inplace=True)
         logreg = LogisticRegression(verbose=True)
-        logreg.fit(ds[FEATURES], ds[LABEL])
+        logreg.fit(ds[FEATURES], ds[LABEL], save_history=False, epochs=300)
+        logreg.graph()
         logreg.save_model()
     except Exception as error:
         print(Exception.__name__, error)

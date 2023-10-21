@@ -66,7 +66,8 @@ try:
     ds = read_csv(DATASET, index_col=INDEX_COL)
     ds.replace('Right', 0, inplace=True)
     ds.replace('Left', 1, inplace=True)
-    ds["Birthday"] = to_datetime(ds["Birthday"]).dt.strftime("%Y%m%d").astype(int)
+    ds["Birthday"] = to_datetime(
+        ds["Birthday"]).dt.strftime("%Y%m%d").astype(int)
     stats.normalize_dataframe(ds)
     pairplot(ds)
     plt.show()
