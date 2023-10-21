@@ -11,8 +11,6 @@ INDEX_COL = 'Index'
 LABEL = 'Hogwarts House'
 
 FEATURES = [
-    'Best Hand',
-    'Birthday',
     'Arithmancy',
     'Astronomy',
     'Herbology',
@@ -25,7 +23,9 @@ FEATURES = [
     'Potions',
     'Care of Magical Creatures',
     'Charms',
-    'Flying'
+    'Flying',
+    'Birthday',
+    'Best Hand'
 ]
 
 
@@ -67,10 +67,7 @@ try:
     ds.replace('Right', 0, inplace=True)
     ds.replace('Left', 1, inplace=True)
     ds["Birthday"] = to_datetime(ds["Birthday"]).dt.strftime("%Y%m%d").astype(int)
-    print(ds)
-
     stats.normalize_dataframe(ds)
-    print(ds)
     pairplot(ds)
     plt.show()
 except Exception as error:

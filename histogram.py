@@ -27,6 +27,8 @@ def histogram(ds: DataFrame, label: str, feature: str):
         data = ds[ds[label] == ll][feature]
         plt.hist(data, label=ll, alpha=0.5, bins=10, linewidth=1.2)
     plt.legend(labels)
+    plt.xlabel("Grades (normalized)")
+    plt.ylabel("Occurrences")
     plt.title(f"Histogram for {FEATURE}")
     plt.show()
 
