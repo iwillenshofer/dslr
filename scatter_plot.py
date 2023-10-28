@@ -29,10 +29,10 @@ def scatterplot(ds: DataFrame, label, features):
     for ll in labels:
         data1 = ds[ds[label] == ll][features[0]]
         data2 = ds[ds[label] == ll][features[1]]
-        plt.scatter(data1, data2, s=.1)
+        plt.scatter(data1, data2, s=5, alpha=.5)
     plt.xlabel(features[0])
     plt.ylabel(features[1])
-    plt.legend(labels, loc='lower right', markerscale=10.0)
+    plt.legend(labels, loc='lower right', markerscale=3.0)
     plt.title(f"Scatterplot comparing {features[0]} and {features[1]}")
     plt.show()
 

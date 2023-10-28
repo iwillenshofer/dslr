@@ -1,6 +1,7 @@
 from tools import stats
 from pandas import read_csv, DataFrame, to_datetime
 from matplotlib import pyplot as plt
+import datetime as dt
 
 DATASET = "datasets/dataset_train.csv"
 
@@ -38,8 +39,8 @@ def pairplot(ds: DataFrame):
     for r, feat_row in enumerate(FEATURES):
         for c, feat_col in enumerate(FEATURES):
             for label in labels:
-                data1 = ds[ds[LABEL] == label][feat_row]
-                data2 = ds[ds[LABEL] == label][feat_col]
+                data1 = ds[ds[LABEL] == label][feat_col]
+                data2 = ds[ds[LABEL] == label][feat_row]
                 if r != c:
                     axs[r][c].scatter(data1, data2, s=.1, alpha=.7)
                 else:
@@ -67,7 +68,8 @@ try:
     ds.replace('Right', 0, inplace=True)
     ds.replace('Left', 1, inplace=True)
     ds["Birthday"] = to_datetime(
-        ds["Birthday"]).dt.strftime("%Y%m%d").astype(int)
+        ds["Birthday"])
+    ds["Birthday"] = (ds['Birthday'] - dt.datetime(1970,1,1)).dt.total_seconds().astype('int64')
     stats.normalize_dataframe(ds)
     pairplot(ds)
     plt.show()
