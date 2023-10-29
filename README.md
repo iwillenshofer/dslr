@@ -79,7 +79,7 @@ _Which Hogwarts course has a homogeneous score distribution between all four hou
 $ python3 histogram.py
 ```
 
-![plot](.resouces/histogram.png)
+![plot](.resources/histogram.png)
 
 Using histogram, we can visualize that `Care of Magical Creatures` has the most homogeneous distributions, alongside with `Arithmancy`, `Best Hand` and `Birthday`
 
@@ -94,7 +94,7 @@ _What are the two features that are similar?_
 $ python3 scatter_plot.py
 ```
 
-![plot](.resouces/scatter_plot.png)
+![plot](.resources/scatter_plot.png)
 
 Using scatterplot, we can visualize related features.
 
@@ -109,7 +109,7 @@ _From this visualization, what features are you going to use for your logistic r
 $ python3 pair_plot.py
 ```
 
-![plot](.resouces/pair_plot.png)
+![plot](.resources/pair_plot.png)
 
 The selected features are the ones with the least homogeneous distribution:
 `Astronomy, Herbology, Defense Against the Dark Arts, Divination, Muggle Studies, Ancient Runes, History of Magic, Transfiguration, Potions, Charms, Flying`
@@ -142,6 +142,10 @@ Biases: {'Gryffindor': array([0.53204114]), 'Hufflepuff': array([-0.52298734]), 
 ```
 
 this will generate a file called `model.json`, containing the weights and biases
+
+### Gradient Descent Visualization:
+
+![plot](.resources/gradient.png)
 
 
 ## Predicting:
